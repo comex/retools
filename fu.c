@@ -14,7 +14,7 @@ static char **files;
 static char *delimiter = "--";
 static char stdin_fn;
 static int pcre_options = PCRE_MULTILINE;
-static bool invert_match, ignore_case, no_multiline, double_newline;
+static bool invert_match, ignore_case, no_multiline, double_newline, color;
 
 struct margp_meta argp[] = {
     MARGP_OPT0('v', "invert-match",
@@ -32,18 +32,36 @@ struct margp_meta argp[] = {
     MARGP_OPT1('d', "delimiter",
                "Specify a delimiter (default --).",
                margp_str, &delimiter),
+    MARGP_OPT0('c', "color",
+               "Colored output.",
+               &color),
     MARGP_ARG("pattern", margp_str, &pattern),
     MARGP_ARG("files", margp_str_vec, &files),
     MARGP_END
 };
 
 static void finish() {
-    int r = pcre_exec(re, NULL, buf, (int) (ptr - buf), 0, 0, NULL, 0);
-    if(invert_match ? r : !r) {
+    int range[2];
+    int r = pcre_exec(re, NULL, buf, (int) (ptr - buf), 0, 0, range, 2);
+    if(invert_match || !color) {
+        if((r >= 0) == !invert_match) {
+            if(printed) printf("%s", delimiter);
+            printed = true;
+            fwrite(buf, ptr - buf, 1, stdout);
+        }
+    } else if(r >= 0) {
         if(printed) printf("%s", delimiter);
         printed = true;
-        fwrite(buf, ptr - buf, 1, stdout);
-        fflush(stdout);
+        int old = 0;
+        do {
+            fwrite(buf + old, range[0] - old, 1, stdout);
+            printf("\x1b[7m");
+            fwrite(buf + range[0], range[1] - range[0], 1, stdout);
+            printf("\x1b[27m");
+            old = range[1];
+            r = pcre_exec(re, NULL, buf, (int) (ptr - buf), range[1], 0, range, 2);   
+        } while(r >= 0);
+        fwrite(buf + old, ptr - (buf + old), 1, stdout);
     }
     ptr = buf;
 }
@@ -78,9 +96,9 @@ int main(int argc, char **argv) {
     if(no_multiline)
         pcre_options &= ~PCRE_MULTILINE;
     if(double_newline)
-        delimiter = ""; 
-    char *del = malloc(strlen(delimiter) + 3);
-    sprintf(del, "\n%s\n", delimiter);
+        delimiter = "";
+    char *del = malloc(strlen(delimiter) + 2);
+    sprintf(del, "%s\n", delimiter);
     delimiter = del;
 
     const char *err; int erroffset;
