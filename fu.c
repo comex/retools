@@ -38,15 +38,14 @@ struct margp_meta argp[] = {
 };
 
 static void finish() {
-/*
-    int r = pcre_exec(re, NULL, s, (int) (ptr - s), 0, 0, NULL, 0);
-    if(argp.invert_match ? r : !r) {
+    int r = pcre_exec(re, NULL, buf, (int) (ptr - buf), 0, 0, NULL, 0);
+    if(invert_match ? r : !r) {
         if(printed) printf("%s", delimiter);
         printed = true;
-        fwrite(s, ptr - s, 1, stdout);
+        fwrite(buf, ptr - buf, 1, stdout);
         fflush(stdout);
     }
-    */
+    ptr = buf;
 }
 
 static void do_file(FILE *fp) {
@@ -54,7 +53,6 @@ static void do_file(FILE *fp) {
         if(!*ptr) break;
         if(!strcmp(ptr, delimiter)) {
             finish();
-            ptr = buf;
         } else {
             ptr += strlen(ptr);
             if(ptr + 1 == buf + buf_size) {
