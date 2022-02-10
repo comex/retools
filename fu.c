@@ -14,7 +14,7 @@ static char **files;
 static char *delimiter = "--";
 static char stdin_fn;
 static int pcre_options = PCRE_MULTILINE;
-static bool invert_match, ignore_case, no_multiline, double_newline, color;
+static bool invert_match, ignore_case, no_multiline, dotall, double_newline, color;
 
 struct margp_meta argp[] = {
     MARGP_OPT0('v', "invert-match",
@@ -26,6 +26,9 @@ struct margp_meta argp[] = {
     MARGP_OPT0('M', "no-multiline",
                "^ and $ refer to the delimited block rather than a line within the block.",
                &no_multiline),
+    MARGP_OPT0('s', "dotall",
+               ". can include a newline",
+               &dotall),
     MARGP_OPT0('n', "double-newline",
                "Blocks are delimited by an \\n\\n rather than \\n--\\n.",
                &double_newline),
@@ -93,6 +96,8 @@ int main(int argc, char **argv) {
 
     if(ignore_case)
         pcre_options |= PCRE_CASELESS;
+    if(dotall)
+        pcre_options |= PCRE_DOTALL;
     if(no_multiline)
         pcre_options &= ~PCRE_MULTILINE;
     if(double_newline)
